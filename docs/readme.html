@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html class="client-nojs" lang="ja" dir="ltr">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="utf-8">
+<title>AutoMicRecorder (Unity asset)</title>
+<style type="text/css">
+.oldsrc {
+	border: solid 1px black;
+	font-family: Consolas, 'Courier New', Courier, Monaco, monospace;
+	margin: 5px;
+	padding: 5px;
+	color:#999999; 
+}
+.newsrc { 
+	border: solid 1px black;
+	margin: 5px;
+	padding: 5px;
+	font-family: Consolas, 'Courier New', Courier, Monaco, monospace;
+}
+.c {
+	text-align: center;
+}
+dt {
+	font-weight: 600;
+}
+</style>
+</head>
+<body>
+<h2>AutoMicRecorder</h2>
+<h3>何のソフトなの？</h3>
+<p>
+このプログラムは、<a href="https://unity3d.com/" target="_blank">Unity（ゲームエンジン）</a>において、マイクからの音声を音量レベルに応じて自動的にAudioClipに切り出すためのアセットです。<br/>
+サンプルとして、自動的に切り出した音声を復唱し、Google Cloud Speech APIでテキスト化する機能のシーンを用意しました。Google Cloud Speech APIを使うには、以下の作業も必要です。
+<ol>
+<li>Google Developer Consoleを使うためのユーザ登録</ul>
+<li>Google Developer Console内でプロジェクトの作成</li>
+<li>Google Cloud Speech APIの有効化</li>
+<li>APIキー（認証情報）の作成</li>
+</ol>
+</p>
+<h3>動作条件</h3>
+<ul>
+<li>Unity5以上をインストールしたマシン（MacOS X 10.11, Unity2017.1 で動作確認）</li>
+<li>サンプル（Google Cloud Speech APIによる音声認識）を使うためには、Unity5.4以上が必要です。</li>
+</ul>
+
+<h3>スクリプトの構成</h3>
+<ul>
+<li>AutoMicRecorder/Scripts/
+<ul>
+<li>AutoMicRecorder.cs - AutoMicRecorder本体</li>
+</ul>
+</li>
+<li>AutoMicRecorderSample/Scripts/
+<ul>
+<li>GoogleJSONRequest.cs - DTOクラス（Google Cloud Speech APIリクエスト）
+<li>GoogleJSONResponse.cs - DTOクラス（Google Cloud Speech APIレスポンス）
+<li>GoogleJSONResponseError.cs - DTOクラス（Google Cloud Speech APIレスポンス）
+<li>GooglePreRecordedSpeechToTextService.cs - AudioClipをGoogle Cloud Speech APIでテキスト化する機能</li>
+<li>HTTP.cs - UniWebのRequestクラスの簡易代替</li>
+<li>PreRecordedSpeechToTextService.cs - AudioClipをテキスト化する機能の抽象クラス</li>
+<li>SpeechToTextResult.cs - DTOクラス（SpeechToTextの結果）
+<li>TestScene.cs - AutoMicRecorderの動作確認のためのコントローラ</li>
+<li>TextAlternative.cs - DTOクラス（SpeechToTextの結果）
+</ul>
+</li>
+</ul>
+<h3>使い方</h3>
+<ol>
+<li>AutoMicRecorderアセットを、使用したいプロジェクトにインポートする。</li>
+<li>Hierarchyビュー内で右クリック→Audio→Audio Sourceを選び、Audio SourceのGameObjectを追加する。</li>
+<li>追加したAudio SourceのOutputを、AutoMicRecorderにあるNullAudioMixerのMasterに設定する（Inspectorビュー）</li>
+<li>Audio SourceのGameObjectに、AutoMicRecorder.csを追加する（Inspectorビュー）<br/>
+InspectorビューのAdd Componentボタンを押した場合は、Scripts→hayatsukikazumi.amr→Auto Mic Recorderを選ぶ。</li>
+</li>
+<li>Auto Mic Recorderの設定（Inspectorビュー）
+<dl>
+<dt>Play On Start</dt>
+<dd>起動時にマイクを有効化するか</dd>
+<dt>Auto Recording</dt>
+<dd>音量レベルによる自動録音を行うか</dd>
+<dt>Threshold</dt>
+<dd>音量レベルしきい値（最小0.001〜最大1）</dd>
+<dt>Auto Calibration</dt>
+<dd>音量レベルしきい値を自動的に実行するか</dd>
+<dt>Sensivity</dt>
+<dd>音量レベルしきい値自動調整の感度（-1:鈍感〜0:標準〜1:敏感）</dd>
+<dt>Mic Device Name</dt>
+<dd>マイク入力のデバイス名（空白:デフォルトのデバイスを指定）</dd>
+<dt>Mic Sample Rate</dt>
+<dd>マイク入力のサンプリング周波数(Hz)</dd>
+<dt>Max Record Time</dt>
+<dd>最大録音時間（秒）</dd>
+<dt>Before Gap</dt>
+<dd>録音開始前の音声データ取得時間（秒）</dd>
+<dt>Sensor On</dt>
+<dd>連続して音量レベルしきい値を超えた時に録音を開始する時間（秒）</dd>
+<dt>Sensor On Keep</dt>
+<dd>自動録音における録音開始後の音量センサー不感時間（秒）</dd>
+<dt>Sensor Off</dt>
+<dd>連続して音量レベルしきい値を割った時に録音を停止する時間（秒）</dd>
+<dt>Sensor Off Keep</dt>
+<dd>自動録音における録音停止後の音量センサー不感時間（秒）</dd>
+<dt>After Gap</dt>
+<dd>録音終了後の音声データ取得時間（秒）</dd>
+<dt>Max Init Time</dt>
+<dd>StartMicrophoneメソッドにおける初期化最大待ち時間（秒）</dd>
+</dl>
+<img src="DescriptionOfProperties_fig1.svg"/>
+<img src="DescriptionOfProperties_fig2.svg"/>
+<dl>
+<dt>Recording Started (AutoMicRecorder, bool)</dt>
+<dt>Recording Stopped (AutoMicRecorder, bool)</dt>
+<dt>Recording Timeout (AutoMicRecorder, bool)</dt>
+<dt>CalibrationEnd (AutoMicRecorder, bool)</dt>
+<dt>MicrophoneStarted (AutoMicRecorder, bool)</dt>
+<dt>MicrophoneStartFailed (AutoMicRecorder, bool)</dt>
+<dd>（「AutoMicRecorderの説明」の「イベントハンドラ」「AutoMicRecorderEventの引数」を参照のこと）</dd>
+</dl>
+</ol>
+
+<h3>サンプルのシーンの設定</h3>
+<ol>
+<li>AutoMicRecorderSample/Scenes/testを開く。</li>
+
+<li>Google Cloud Speech APIでテキスト化する機能を実行する場合
+	<ol>
+	<li>Google Pre Recorded Speech To Text Serviceの設定（HierarchyビューでGameControllerを選択→Inspectorビュー）
+	<dl>
+	<dt>API Key</dt>
+	<dd>Google Developer Consoleで作成した認証キー</dd>
+	<dt>Language Code</dt>
+	<dd>言語（例）日本語: ja-JP&nbsp;&nbsp;&nbsp;&nbsp;英語（アメリカ）: en-US</dd>
+	<dt>Max Alternatives</dt>
+	<dd>最大の認識結果候補数</dd>
+	</dl>
+	</li>
+	</ol>
+</li>
+
+<li>Google Cloud Speech APIでテキスト化する機能を実行しない場合
+	<ol>
+	<li>Hierarchyビューの「GameController」から、Google Pre Recorded Speech To Text Service コンポーネントを除去、または無効化する。
+	</ol>
+</li>
+</ol>
+
+<h3>AutoMicRecorderの説明</h3>
+<h4>イベントハンドラ</h4>
+<dl>
+<dt>public AutoMicRecorderEvent RecordingStarted</dt>
+<dd>録音開始後に発生</dd>
+<dt>public AutoMicRecorderEvent RecordingStopped</dt>
+<dd>録音停止後に発生</dd>
+<dt>public AutoMicRecorderEvent RecordingTimeout</dt>
+<dd>録音時間が最大を超えたために終了した時に発生</dd>
+<dt>public AutoMicRecorderEvent CalibrationEnd</dt>
+<dd>自動しきい値調整の終了時に発生</dd>
+<dt>public AutoMicRecorderEvent MicrophoneStarted (Ver.2.1〜)</dt>
+<dd>マイク初期化完了時に発生</dd>
+<dt>public AutoMicRecorderEvent MicrophoneStartFailed (Ver.2.2〜)</dt>
+<dd>マイク初期化失敗時、または最大待ち時間超えの時に発生</dd>
+</dl>
+
+<h4>AutoMicRecorderEventの引数</h4>
+<dl>
+<dt>AutoMicRecorder source</dt>
+<dd>本イベントの発生元のAutoMicRecorder</dd>
+<dt>bool isAutomatic</dt>
+<dd>自動実行と、明示的なメソッド呼び出しの区別（自動実行時にtrue）</dd>
+</dd>
+
+<h4>プロパティ</h4>
+<dl>
+<dt>public bool autoRecording</dt>
+<dd>音量レベルによる自動録音を行うか</dd>
+<dt>public float threshold</dt>
+<dd>音量レベルしきい値</dd>
+<dt>public float beforeGap</dt>
+<dd>録音開始前の音声データ取得時間（秒）</dd>
+<dt>public float sensorOn</dt>
+<dd>連続して音量レベルしきい値を超えた時に録音を開始する時間（秒）</dd>
+<dt>public float sensorOnKeep</dt>
+<dd>自動録音における録音開始後の音量センサー不感時間（秒）</dd>
+<dt>public float sensorOff</dt>
+<dd>連続して音量レベルしきい値を割った時に録音を停止する時間（秒）</dd>
+<dt>public float sensorOffKeep</dt>
+<dd>自動録音における録音停止後の音量センサー不感時間（秒）</dd>
+<dt>public float afterGap</dt>
+<dd>録音終了後の音声データ取得時間（秒）</dd>
+<dt>public RecorderStatus status</dt>
+<dd>AutoMicRecorderの状態（読み取り専用）</dd>
+<dt>public float recordingTime</dt>
+<dd>録音時間（読み取り専用）</dd>
+<dt>public float soundLevel</dt>
+<dd>音量レベル（読み取り専用）</dd>
+<dt>public bool playOnStart (Ver.2.1〜)</dt>
+<dd>起動時にマイクを有効にするか</dd>
+<dt>public bool autoCalibration (Ver.2.1〜)</dt>
+<dd>自動しきい値調整を自動的に実行するか</dd>
+<dt>public float sensivity (Ver.2.1〜)</dt>
+<dd>自動しきい置調整の感度（-1:鈍感〜0:標準〜1:敏感）</dd>
+<dt>public string micDeviceName (Ver.2.1〜)</dt>
+<dd>マイクデバイス名（nullまたは空白:デフォルトの音声入力デバイス）</dd>
+<dt>public float smoothedSoundLevel (Ver.2.1〜)</dt>
+<dd>アタック音を平均に均した音量レベル（読み取り専用）</dd>
+<dt>public float maxInitTime (Ver.2.2〜)</dt>
+<dd>StartMicrophoneメソッドにおける初期化最大待ち時間（秒）</dd>
+</dl>
+
+<h4>メソッド</h4>
+<dl>
+<dt>public bool StartRecording()</dt>
+<dd>録音を開始する（既に録音中の場合はfalseが返る）</dd>
+<dt>public bool StopRecording()</dt>
+<dd>録音を停止する（既に録音停止中の場合はfalseが返る）</dd>
+<dt>public AudioClip GetRecordedClip()</dt>
+<dd>録音停止後、これまで録音したデータを取得する。</dd>
+<dt>public void CalibrateThreshold()</dt>
+<dd>現在の音量レベルに応じた自動しきい値調整。マイク停止時、録音時はキャンセルされる。</dd>
+<dt>public void StartMicrophone(int newSampleRate)</dt>
+<dd>指定したサンプリング周波数でマイクを初期化する。録音中のデータは破棄される。</dd>
+<dt>public void StartMicrophone()</dt>
+<dd>前回と同じサンプリング周波数でマイクを初期化する。録音中のデータは破棄される。</dd>
+<dt>public void StopMicrophone()</dt>
+<dd>マイクを終了する。録音中のデータは破棄される。</dd>
+</dl>
+
+<h3>RecorderStatusの説明</h3>
+<dl>
+<dt>public enum RecorderStatus { READY, RECORDING, CALIBRATION, NOT_READY, SENSOR_SURPRESSING}</dt>
+<dd>AutoMicRecorderの状態<br/>
+※順位は、状態出力の優先順を示す（例：録音中 かつ 音量センサー抑止中 →  RECORDING）
+<table border>
+	<tr>
+		<th>順位</th>
+		<th>statusプロパティ</th>
+		<th>状態</th>
+		<th>自動録音</th>
+		<th>StartRecording()実行</th>
+		<th>StopRecording()実行</th>
+	</tr>
+	<tr>
+		<td class="c">1</td>
+		<th>NOT_READY</th>
+		<td>録音不可能</td>
+		<td>無効</td>
+		<td>false（録音開始しない）</td>
+		<td>false（録音していない状態継続）</td>
+	</tr>
+	<tr>
+		<td class="c">2</td>
+		<th>RECORDING</th>
+		<td>録音中</td>
+		<td>音量レベル監視中</td>
+		<td>false（録音継続）</td>
+		<td>true（録音終了）</td>
+	</tr>
+	<tr>
+		<td class="c">3</td>
+		<th>CALIBRATION</th>
+		<td>CalibrateThresholdメソッドによる自動しきい値調整実行中</td>
+		<td>無効（現在の状態を維持）</td>
+		<td>録音中でなければtrue（録音開始）</td>
+		<td>録音中ならばtrue（録音終了）</td>
+	</tr>
+	<tr>
+		<td class="c">4</td>
+		<th>SENSOR_SURPRESSING</th>
+		<td>音量センサー抑止中</td>
+		<td>無効（現在の状態を維持）</td>
+		<td>録音中でなければtrue（録音開始）</td>
+		<td>録音中ならばtrue（録音終了）</td>
+	</tr>
+	<tr>
+		<td class="c">5</td>
+		<th>READY</th>
+		<td>録音準備完了</td>
+		<td>音量レベル監視中</td>
+		<td>true（録音開始）</td>
+		<td>false（録音していない状態継続）</td>
+	</tr>
+</table>
+</dl>
+
+<h3>著作権・免責事項</h3>
+<p>
+このプログラムの著作権は、私（はやつきかづみ）が所有しております。<br/>
+商用・非商用を問わずこのプログラムをご利用可能です。ただし、このプログラムを使用したことによる不利益・被害・損失等に関して、私（はやつきかづみ）は一切責任を負いません。各自の自己責任でお願いします。
+</p>
+
+<h3>変更履歴</h3>
+<ul>
+<li>2017/10/15 Ver. 1.0.0を公開</li>
+<li>2017/10/17 本ドキュメントの修正</li>
+<li>2017/10/30 Ver. 1.0.1を公開
+	<ul>
+	<li>録音音声が途切れる不具合の修正</li>
+	<li>GooglePreRecordedSpeechToTextServiceにMax Alternativesパラメータを追加</li>
+	</ul>
+</li>
+<li>2017/11/04 Ver. 1.0.2を公開
+	<ul>
+	<li>AutoMicRecorderクラスのの一部プロパティをpublic変数に変更</li>
+	<li>AutoMicRecorderのSensor On Keep (Sensor On Keep)プロパティの内容を最小録音（停止）時間からセンサー不感時間に変更</li>
+	<li>AutoMicRecorder.RecorderStatusにSENSOR_SURPRESSINGステータスを追加</li>
+	</ul>
+</li>
+<li>2018/05/20 Ver. 2.0.0を公開
+	<ul>
+	<li>Speech-to-textアセットの公開終了に伴うサンプルの修正（AutoMicRecorderに変更はありません）</li>
+	</ul>
+</li>
+<li>2018/07/08 Ver. 2.1.0を公開
+	<ul>
+	<li>AutoMicRecorderに以下の機能を追加
+		<ul>
+		<li>自動しきい値調整の自動動作（感度指定あり）</li>
+		<li>Microphoneのデバイス名指定</li>
+		<li>Start時のマイク起動指定選択</li>
+		<li>マイク初期化終了イベント</li>
+		</ul>
+	</li>
+	<li>メソッド名変更 ResetMicrophone → StartMicrophone</li>
+	<li>以下の各イベントをdelegateからUnityEvent継承クラスに変更
+		<ul>
+		<li>録音開始</li>
+		<li>録音終了</li>
+		<li>録音タイムアウト</li>
+		<li>自動しきい値調整終了</li>
+		<li>マイク初期化終了</li>
+		</ul>
+	</li>
+	<li>AutoMicRecorderのプロパティ追加
+		<ul>
+		<li>playOnStart</li>
+		<li>autoCalibration</li>
+		<li>sensivity</li>
+		<li>micDeviceName</li>
+		<li>smoothedSoundLevel</li>
+		</ul>
+	</li>
+	<li>自動録音開始・終了の基準となる音量レベルをsmoothedSoundLevelに変更</li>
+	</ul>
+</li>
+<li>2018/07/14 Ver. 2.2.0を公開
+	<ul>
+	<li>バグ修正</li>
+	<li>AutoMicRecorderに以下の機能を追加
+		<ul>
+		<li>マイク初期化終了最大時間指定</li>
+		<li>マイク初期化終了失敗イベント</li>
+		</ul>
+	</li>
+	<li>CalibrateThresholdメソッドの修正
+		<ul>
+		<ll>戻り値をvoidに変更</li>
+		<ll>しきい値決定アルゴリズムの修正</li>
+		</ul>
+	</li>
+	<li>AutoMicRecorderのプロパティ追加
+		<ul>
+		<li>maxInitTime</li>
+		</ul>
+	</li>
+	</ul>
+</li>
+</ul>
+<hr/>
+
+<div>Copyright(c) はやつきかづみ（早月加積） 2017-2018</div>
+<div>http://www.geocities.jp/zzz_s_zoo/</div>
+<div>zzzszoo200@gmail.com</div>
+</body>
+</html>
